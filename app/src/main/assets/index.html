@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>דמקה ושש-בש</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="menu" class="screen">
+  <div class="menu-inner">
+    <div class="title">
+      <img src="emma.jpg" class="face black" alt="">
+      <h1>המשחקים של אמה ואבא</h1>
+      <img src="dad.jpg" class="face white" alt="">
+    </div>
+
+    <div class="games">
+      <button id="btnCheckers" class="game-btn">♛ דמקה</button>
+      <button id="btnBackgammon" class="game-btn">🎲 שש-בש</button>
+    </div>
+
+    <div class="opts">
+      <div class="row">
+        <span class="lbl">משחקים נגד:</span>
+        <div class="seg" data-key="opponent">
+          <button data-val="human">חבר/ה</button>
+          <button data-val="cpu">המחשב</button>
+        </div>
+      </div>
+      <div class="row cpu-only">
+        <span class="lbl">אני משחק/ת עם:</span>
+        <div class="seg" data-key="myColor">
+          <button data-val="b">⚫ שחור (אמה)</button>
+          <button data-val="w">⚪ לבן (אבא)</button>
+        </div>
+      </div>
+      <div class="row cpu-only">
+        <span class="lbl">רמה:</span>
+        <div class="seg" data-key="level">
+          <button data-val="easy">קל</button>
+          <button data-val="mid">בינוני</button>
+          <button data-val="hard">קשה</button>
+        </div>
+      </div>
+      <details>
+        <summary>חוקי דמקה</summary>
+        <label><input type="checkbox" data-key="ck_force"> חובה לאכול</label>
+        <label><input type="checkbox" data-key="ck_back"> חייל רגיל יכול לאכול אחורה</label>
+        <label><input type="checkbox" data-key="ck_fly"> מלך "עף" (זז כמה משבצות)</label>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div id="game" class="screen hidden">
+  <div id="panel">
+    <div id="turn">
+      <img id="turnFace" alt="">
+      <div id="turnText"></div>
+    </div>
+    <div id="msg"></div>
+    <button id="btnRoll" class="primary">הטל קוביות</button>
+    <button id="btnUndo">↶ בטל</button>
+    <div class="spacer"></div>
+    <button id="btnNew">משחק חדש</button>
+    <button id="btnMenu">תפריט</button>
+  </div>
+  <div id="boardWrap"><canvas id="cv"></canvas></div>
+</div>
+
+<div id="overlay" class="hidden">
+  <div class="card">
+    <img id="winFace" alt="">
+    <h2 id="winText"></h2>
+    <div class="card-btns">
+      <button id="ovNew" class="primary">עוד משחק!</button>
+      <button id="ovMenu">תפריט</button>
+    </div>
+  </div>
+</div>
+
+<script src="common.js"></script>
+<script src="checkers.js"></script>
+<script src="backgammon.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.vaknin.emmagames'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.vaknin.emmagames'
+        minSdk 24
+        targetSdk 35
+        // Each CI build gets a higher version so a new APK installs over the old one.
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer)
+        versionName "1.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+    }
+
+    // A fixed key (kept in the repo) so every new build can be installed as an update.
+    signingConfigs {
+        release {
+            storeFile file('emmagames.keystore')
+            storePassword 'emmagames'
+            keyAlias 'emmagames'
+            keyPassword 'emmagames'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

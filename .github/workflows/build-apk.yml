@@ -1,0 +1,41 @@
+name: Build APK
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build signed APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk EmmaGames.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EmmaGames-apk
+          path: EmmaGames.apk
+
+      - name: Publish as a GitHub release (easy download from the phone)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v1.${{ github.run_number }}"
+          gh release create "$TAG" EmmaGames.apk \
+            --target "${{ github.sha }}" \
+            --title "דמקה ושש-בש $TAG" \
+            --notes "להורדה: לחצו על EmmaGames.apk, פתחו את הקובץ בטלפון ואשרו התקנה."
