@@ -1,28 +1,49 @@
 'use strict';
 // Shared helpers. Colors: 'b' = black = Emma, 'w' = white = Dad.
 
-const NAMES = { b: 'אמה', w: 'אבא' };
-const IMG = {};
 const opp = c => (c === 'w' ? 'b' : 'w');
 
 const SETTINGS_KEY = 'emmagames.settings';
+const PLAYERS_KEY = 'emmagames.players';
 const S = Object.assign(
-  { opponent: 'human', myColor: 'w', level: 'mid', ck_force: true, ck_back: false, ck_fly: false },
+  { opponent: 'human', myColor: 'w', level: 'mid', ck_force: true, ck_back: false, ck_fly: false, pb: 'emma', pw: 'dad' },
   (() => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; } })()
 );
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(S)); } catch (e) {} }
 
 const isCpu = color => S.opponent === 'cpu' && color !== S.myColor;
 
-function loadImages(cb) {
+// ---------- players ----------
+// g: 'm' / 'f' (for Hebrew grammar). img: asset file or data: URL taken on the phone.
+const BUILTIN_PLAYERS = [
+  { id: 'emma', name: 'אמה', g: 'f', img: 'emma.jpg', builtin: true },
+  { id: 'dad', name: 'אבא', g: 'm', img: 'dad.jpg', builtin: true },
+];
+let CUSTOM_PLAYERS = (() => { try { return JSON.parse(localStorage.getItem(PLAYERS_KEY)) || []; } catch (e) { return []; } })();
+function saveCustomPlayers() {
+  try { localStorage.setItem(PLAYERS_KEY, JSON.stringify(CUSTOM_PLAYERS)); return true; } catch (e) { return false; }
+}
+const allPlayers = () => BUILTIN_PLAYERS.concat(CUSTOM_PLAYERS);
+const playerById = id => allPlayers().find(p => p.id === id);
+
+// Current names / genders / face images for each color.
+const NAMES = {}, GENDER = {}, IMG = {};
+function applyPlayers(cb) {
+  if (!playerById(S.pb)) S.pb = 'emma';
+  if (!playerById(S.pw)) S.pw = 'dad';
+  if (S.pb === S.pw) S.pw = S.pb === 'dad' ? 'emma' : 'dad';
   let n = 0;
-  for (const [k, src] of [['b', 'emma.jpg'], ['w', 'dad.jpg']]) {
+  for (const c of ['b', 'w']) {
+    const p = playerById(c === 'b' ? S.pb : S.pw);
+    NAMES[c] = p.name; GENDER[c] = p.g;
     const im = new Image();
-    im.onload = im.onerror = () => { if (++n === 2) cb(); };
-    im.src = src;
-    IMG[k] = im;
+    im.onload = im.onerror = () => { if (++n === 2 && cb) cb(); };
+    im.src = p.img;
+    IMG[c] = im;
   }
 }
+// gendered word for the player of color c: gx('w', 'ניצח', 'ניצחה')
+const gx = (c, m, f) => (GENDER[c] === 'f' ? f : m);
 
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; }

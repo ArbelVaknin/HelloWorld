@@ -19,5 +19,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Lets the camera app save a photo of a new player into the app's private cache. -->
+        <provider
+            android:name=".PhotoProvider"
+            android:authorities="com.vaknin.emmagames.photos"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

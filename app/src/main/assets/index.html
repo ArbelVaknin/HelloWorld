@@ -23,6 +23,14 @@
 
     <div class="opts">
       <div class="row">
+        <span class="lbl">⚫ שחור:</span>
+        <div class="pick" data-side="b"></div>
+      </div>
+      <div class="row">
+        <span class="lbl">⚪ לבן:</span>
+        <div class="pick" data-side="w"></div>
+      </div>
+      <div class="row">
         <span class="lbl">משחקים נגד:</span>
         <div class="seg" data-key="opponent">
           <button data-val="human">חבר/ה</button>
@@ -32,8 +40,8 @@
       <div class="row cpu-only">
         <span class="lbl">אני משחק/ת עם:</span>
         <div class="seg" data-key="myColor">
-          <button data-val="b">⚫ שחור (אמה)</button>
-          <button data-val="w">⚪ לבן (אבא)</button>
+          <button data-val="b" id="myColorB"></button>
+          <button data-val="w" id="myColorW"></button>
         </div>
       </div>
       <div class="row cpu-only">
@@ -71,9 +79,11 @@
 </div>
 
 <div id="overlay" class="hidden">
+  <div id="laughLayer" class="hidden"></div>
   <div class="card">
     <img id="winFace" alt="">
     <h2 id="winText"></h2>
+    <div id="winTaunt"></div>
     <div class="card-btns">
       <button id="ovNew" class="primary">עוד משחק!</button>
       <button id="ovMenu">תפריט</button>
@@ -81,7 +91,47 @@
   </div>
 </div>
 
+<div id="addDlg" class="modal hidden">
+  <div class="card add-card">
+    <div class="add-row">
+      <div class="crop-wrap">
+        <canvas id="cropCv"></canvas>
+        <div id="cropEmpty">📷<br>בחרו תמונה</div>
+      </div>
+      <div class="add-form">
+        <h2>שחקן/ית חדש/ה</h2>
+        <input id="newName" type="text" maxlength="12" placeholder="שם" autocomplete="off">
+        <div class="seg" id="newGender">
+          <button data-val="m">בן</button>
+          <button data-val="f">בת</button>
+        </div>
+        <div class="photo-btns">
+          <label class="btn">📷 צילום<input type="file" accept="image/*" capture="user" id="fileCam" hidden></label>
+          <label class="btn">🖼️ מהגלריה<input type="file" accept="image/*" id="fileGal" hidden></label>
+        </div>
+        <div id="zoomRow" class="hidden">🔍 <input type="range" id="zoom" min="1" max="4" step="0.01" value="1"></div>
+        <div id="cropHint" class="hint hidden">גררו את התמונה כדי למרכז את הפנים בעיגול</div>
+        <div class="card-btns">
+          <button id="addSave" class="primary">שמירה</button>
+          <button id="addCancel">ביטול</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="confirmDlg" class="modal hidden">
+  <div class="card">
+    <h2 id="confirmText"></h2>
+    <div class="card-btns">
+      <button id="confirmYes" class="primary">כן</button>
+      <button id="confirmNo">לא</button>
+    </div>
+  </div>
+</div>
+
 <script src="common.js"></script>
+<script src="laugh.js"></script>
 <script src="checkers.js"></script>
 <script src="backgammon.js"></script>
 <script src="app.js"></script>

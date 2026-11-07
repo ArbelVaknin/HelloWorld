@@ -296,9 +296,21 @@ const Backgammon = (() => {
   function win() {
     G.over = true; G.busy = false;
     clearTimeout(G.timer);
-    const loser = opp(G.turn);
     App.update();
-    App.showWin(G.turn, G.st.off[loser] === 0 ? 'מארס! (כפול)' : '');
+    App.showWin(G.turn, winKind(G.st, G.turn));
+  }
+
+  // 'turkish' = מארס טורקי (loser bore off nothing and still has a checker on the bar
+  // or in the winner's home board), 'mars' = מארס, '' = regular win.
+  function winKind(s, winner) {
+    const loser = opp(winner);
+    if (s.off[loser] > 0) return '';
+    if (s.bar[loser] > 0) return 'turkish';
+    for (let i = 0; i < 24; i++) {
+      const inWinnerHome = winner === 'w' ? i <= 5 : i >= 18;
+      if (inWinnerHome && s.pts[i] * sgn(loser) > 0) return 'turkish';
+    }
+    return 'mars';
   }
 
   function undo() {
@@ -542,6 +554,6 @@ const Backgammon = (() => {
   const tapXY = w => w === 'off' ? [geo.trayX + geo.T / 2, geo.midY + (G.turn === 'b' ? -1 : 1) * geo.ih / 4]
     : w === 'bar' ? [geo.barX, geo.midY + (G.turn === 'b' ? -1 : 1) * geo.ih / 4]
     : [pointX(w), isTop(w) ? geo.iy + geo.triH / 2 : geo.iy + geo.ih - geo.triH / 2];
-  const _t = { tapXY, initState, genSeqs, applyStep, stepTarget, pips, evaluate, get G() { return G; } };
+  const _t = { winKind, tapXY, initState, genSeqs, applyStep, stepTarget, pips, evaluate, get G() { return G; } };
   return { name: 'backgammon', newGame, onTap, draw, resize, undo, status, stop, roll, _t };
 })();
