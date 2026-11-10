@@ -37,5 +37,5 @@ jobs:
           TAG="v1.${{ github.run_number }}"
           gh release create "$TAG" EmmaGames.apk \
             --target "${{ github.sha }}" \
-            --title "דמקה ושש-בש $TAG" \
+            --title "משחקי אמה ואבא $TAG" \
             --notes "להורדה: לחצו על EmmaGames.apk, פתחו את הקובץ בטלפון ואשרו התקנה."

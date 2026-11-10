@@ -150,13 +150,14 @@ const App = (() => {
   // ---------- win screen ----------
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
-  function showWin(color, kind) {
+  // extra: optional line under the result, e.g. a final score
+  function showWin(color, kind, extra) {
     const face = $('winFace');
-    if (!color) { // draw (tic-tac-toe)
+    if (!color) { // draw
       face.style.display = 'none';
       $('winText').textContent = 'תיקו! 🤝';
-      $('winTaunt').textContent = '';
-      $('winTaunt').classList.add('hidden');
+      $('winTaunt').textContent = extra || '';
+      $('winTaunt').classList.toggle('hidden', !extra);
       $('overlay').classList.remove('hidden');
       return;
     }
@@ -182,6 +183,7 @@ const App = (() => {
     if (kind !== 'turkish') Laugh.playRecorded(color === 'b' ? S.pb : S.pw);
     $('winText').textContent = t;
     $('winText').style.whiteSpace = 'pre-line';
+    if (extra) taunt = extra + (taunt ? '\n' + taunt : '');
     $('winTaunt').textContent = taunt;
     $('winTaunt').classList.toggle('hidden', !taunt);
     $('overlay').classList.remove('hidden');
@@ -241,6 +243,11 @@ const App = (() => {
   $('btnCheckers').onclick = () => start(Checkers);
   $('btnBackgammon').onclick = () => start(Backgammon);
   $('btnTicTacToe').onclick = () => start(TicTacToe);
+  $('btnFourRow').onclick = () => start(FourRow);
+  $('btnMemory').onclick = () => start(Memory);
+  $('btnReversi').onclick = () => start(Reversi);
+  $('btnLadders').onclick = () => start(Ladders);
+  $('btnGomoku').onclick = () => start(Gomoku);
   $('btnRoll').onclick = () => { if (game) { game.roll(); update(); } };
   $('btnUndo').onclick = () => { if (game) { game.undo(); update(); } };
   $('btnNew').onclick = () => { if (game) start(game); };
