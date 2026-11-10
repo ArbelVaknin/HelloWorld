@@ -2,6 +2,10 @@
 <!-- No INTERNET permission: the app is fully offline and has no ads. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Only used when a player taps "record laugh"; the recording stays on the phone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

@@ -44,6 +44,11 @@ const App = (() => {
         const name = document.createElement('span'); name.textContent = p.name;
         chip.append(img, name);
         chip.onclick = () => choosePlayer(side, p.id);
+        const mic = document.createElement('span');
+        mic.className = 'mic' + (LAUGHS[p.id] ? ' has' : '');
+        mic.textContent = LAUGHS[p.id] ? '😂' : '🎤';
+        mic.onclick = e => { e.stopPropagation(); LaughRecorder.open(p.id); };
+        chip.append(mic);
         if (!p.builtin) {
           const del = document.createElement('span');
           del.className = 'del'; del.textContent = '✕';
@@ -72,6 +77,7 @@ const App = (() => {
     confirmBox('למחוק את ' + p.name + '?', () => {
       CUSTOM_PLAYERS = CUSTOM_PLAYERS.filter(x => x.id !== p.id);
       saveCustomPlayers();
+      delete LAUGHS[p.id]; saveLaughs();
       applyPlayers(() => syncSettingsUI());
       saveSettings();
       syncSettingsUI();
@@ -170,7 +176,7 @@ const App = (() => {
         `אוי ${NAMES[L]}... אולי ${gx(L, 'תנסה', 'תנסי')} דמקה? 😂`,
         `${NAMES[L]} ${gx(L, 'עוד מחפש', 'עוד מחפשת')} איפה הכלים 🙈`,
       ]);
-      startLaugh(L);
+      startLaugh(L, color);
     } else if (!kind) t += ' 🎉';
     $('winText').textContent = t;
     $('winText').style.whiteSpace = 'pre-line';
@@ -180,7 +186,7 @@ const App = (() => {
   }
 
   let hahaTimer = 0;
-  function startLaugh(loser) {
+  function startLaugh(loser, winnerColor) {
     const layer = $('laughLayer');
     layer.innerHTML = '';
     layer.classList.remove('hidden');
@@ -208,7 +214,7 @@ const App = (() => {
       layer.append(s);
       setTimeout(() => s.remove(), 2500);
     }, 250);
-    Laugh.play();
+    Laugh.play(winnerColor === 'b' ? S.pb : S.pw);
   }
 
   function hideWin() {
@@ -245,6 +251,7 @@ const App = (() => {
   window.androidBack = () => {
     if (!$('confirmDlg').classList.contains('hidden')) { $('confirmDlg').classList.add('hidden'); return true; }
     if (!$('addDlg').classList.contains('hidden')) { AddPlayer.close(); return true; }
+    if (!$('laughDlg').classList.contains('hidden')) { LaughRecorder.close(); return true; }
     if (!$('overlay').classList.contains('hidden') || !$('game').classList.contains('hidden')) { toMenu(); return true; }
     return false;
   };
@@ -387,7 +394,127 @@ const AddPlayer = (() => {
     if (!saveCustomPlayers()) { CUSTOM_PLAYERS.pop(); alertMsg('אין מספיק מקום לשמור. מחקו שחקן ישן.'); return; }
     close();
     App.choosePlayer(side, p.id);
+    LaughRecorder.open(p.id, true); // offer to record their laugh right away
   };
+
+  return { open, close };
+})();
+
+// ---------- recording a player's laugh ----------
+// On the phone this uses Android's native recorder (window.AndroidRec, see MainActivity);
+// in a desktop browser it falls back to getUserMedia + MediaRecorder.
+const LaughRecorder = (() => {
+  const $ = id => document.getElementById(id);
+  const MAX_SEC = 8;
+  let pid = null, state = 'idle', t0 = 0, tick = 0, audio = null;
+  let webRec = null, webStream = null;
+
+  function open(id, isNew) {
+    pid = id; state = 'idle';
+    const p = playerById(id);
+    $('laughFace').src = p.img;
+    $('laughTitle').textContent = isNew ? 'להקליט צחוק ל' + p.name + '? 😂' : 'הצחוק של ' + p.name;
+    $('laughDone').textContent = isNew ? 'אולי אחר כך' : 'סיום';
+    status(LAUGHS[id] ? 'יש צחוק שמור. אפשר להקליט חדש.' : 'צחקו חזק לתוך הטלפון! (עד ' + MAX_SEC + ' שניות)');
+    $('laughDlg').classList.remove('hidden');
+    refresh();
+  }
+
+  function close() {
+    if (state === 'rec') cancel();
+    stopPlay();
+    $('laughDlg').classList.add('hidden');
+    App.syncSettingsUI();
+  }
+
+  function status(t) { $('laughStatus').textContent = t; }
+
+  function refresh() {
+    const has = !!LAUGHS[pid];
+    $('recBtn').textContent = state === 'rec' ? '⏹️ עצור' : (has ? '🎤 הקלטה חדשה' : '🎤 הקלט');
+    $('recBtn').disabled = state === 'wait';
+    $('playBtn').disabled = !has || state !== 'idle';
+    $('delLaughBtn').disabled = !has || state !== 'idle';
+    if (has && state === 'idle' && $('laughDone').textContent === 'אולי אחר כך') $('laughDone').textContent = 'סיום';
+  }
+
+  // ---- recorder backends ----
+  function start() {
+    stopPlay();
+    state = 'wait'; refresh();
+    status('מבקש גישה למיקרופון…');
+    if (window.AndroidRec) { window.AndroidRec.start(); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder) { onEvent('error'); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      webStream = stream;
+      const chunks = [];
+      webRec = new MediaRecorder(stream);
+      webRec.ondataavailable = e => chunks.push(e.data);
+      webRec.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        if (webRec && webRec.cancelled) return;
+        const fr = new FileReader();
+        fr.onload = () => onEvent('done', fr.result);
+        fr.readAsDataURL(new Blob(chunks, { type: webRec.mimeType || 'audio/webm' }));
+      };
+      webRec.start();
+      onEvent('started');
+    }).catch(() => onEvent('denied'));
+  }
+  function stop() {
+    if (window.AndroidRec) window.AndroidRec.stop();
+    else if (webRec && webRec.state === 'recording') webRec.stop();
+  }
+  function cancel() {
+    clearInterval(tick);
+    if (window.AndroidRec) window.AndroidRec.cancel();
+    else if (webRec) { webRec.cancelled = true; if (webRec.state === 'recording') webRec.stop(); }
+    state = 'idle';
+  }
+
+  // events from either backend: started | done(dataUrl) | denied | error | short
+  function onEvent(ev, data) {
+    if (ev === 'started') {
+      state = 'rec'; t0 = Date.now();
+      clearInterval(tick);
+      tick = setInterval(() => {
+        const left = Math.ceil(MAX_SEC - (Date.now() - t0) / 1000);
+        status('🔴 מקליט… עוד ' + Math.max(0, left) + ' שניות');
+        if (left <= 0) { clearInterval(tick); stop(); }
+      }, 200);
+      status('🔴 מקליט… עוד ' + MAX_SEC + ' שניות');
+    } else {
+      clearInterval(tick);
+      state = 'idle';
+      if (ev === 'done' && data) {
+        LAUGHS[pid] = data;
+        if (saveLaughs()) { status('נשמר! ✅ ככה זה נשמע:'); play(); }
+        else { delete LAUGHS[pid]; status('אין מספיק מקום לשמור. נסו הקלטה קצרה יותר.'); }
+      } else if (ev === 'denied') status('אין הרשאה למיקרופון. אפשר לאשר בהגדרות הטלפון.');
+      else if (ev === 'short') status('ההקלטה קצרה מדי, נסו שוב');
+      else status('ההקלטה לא הצליחה, נסו שוב');
+    }
+    refresh();
+  }
+  window.onAndroidRec = (ev, b64) => onEvent(ev, b64 ? 'data:audio/mp4;base64,' + b64 : null);
+
+  function play() {
+    stopPlay();
+    if (!LAUGHS[pid]) return;
+    audio = new Audio(LAUGHS[pid]);
+    audio.play().catch(() => {});
+  }
+  function stopPlay() { if (audio) { audio.pause(); audio = null; } }
+
+  $('recBtn').onclick = () => (state === 'rec' ? stop() : start());
+  $('playBtn').onclick = play;
+  $('delLaughBtn').onclick = () => {
+    stopPlay();
+    delete LAUGHS[pid]; saveLaughs();
+    status('הצחוק נמחק. במארס טורקי יתנגן הצחוק הממוחשב.');
+    refresh();
+  };
+  $('laughDone').onclick = close;
 
   return { open, close };
 })();

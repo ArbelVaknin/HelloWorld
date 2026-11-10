@@ -1,14 +1,20 @@
 package com.vaknin.emmagames;
 
 import android.app.Activity;
+import android.Manifest;
 import android.content.ClipData;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.media.MediaRecorder;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -16,15 +22,23 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 /** Hosts the offline HTML games (checkers + backgammon) bundled in assets/. */
 public class MainActivity extends Activity {
     private static final int REQ_PHOTO = 1;
+    private static final int REQ_MIC = 2;
+    private static final int MAX_LAUGH_MS = 10000;
 
     private WebView web;
     private ValueCallback<Uri[]> photoCallback;
     private Uri cameraUri;
     private boolean usedCamera;
+
+    private MediaRecorder recorder;
+    private File laughFile;
+    private long recStart;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +61,7 @@ public class MainActivity extends Activity {
                 return choosePhoto(callback, params.isCaptureEnabled());
             }
         });
+        web.addJavascriptInterface(new RecBridge(), "AndroidRec");
         setContentView(web);
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
@@ -92,6 +107,97 @@ public class MainActivity extends Activity {
         }
         photoCallback.onReceiveValue(result);
         photoCallback = null;
+    }
+
+    // ---------- laugh recording (called from JS as window.AndroidRec.start()/stop()/cancel()) ----------
+    private class RecBridge {
+        @JavascriptInterface public void start() { runOnUiThread(MainActivity.this::requestRecording); }
+        @JavascriptInterface public void stop() { runOnUiThread(() -> finishRecording(true)); }
+        @JavascriptInterface public void cancel() { runOnUiThread(() -> finishRecording(false)); }
+    }
+
+    /** Sends an event to the page: started | done(base64 m4a) | denied | error | short */
+    private void recEvent(String ev, String base64) {
+        String arg = base64 == null ? "null" : "'" + base64 + "'";
+        web.evaluateJavascript("window.onAndroidRec && window.onAndroidRec('" + ev + "', " + arg + ")", null);
+    }
+
+    private void requestRecording() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+            return;
+        }
+        startRecording();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode != REQ_MIC) return;
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) startRecording();
+        else recEvent("denied", null);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void startRecording() {
+        releaseRecorder();
+        laughFile = new File(getCacheDir(), "laugh.m4a");
+        try {
+            recorder = Build.VERSION.SDK_INT >= 31 ? new MediaRecorder(this) : new MediaRecorder();
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            recorder.setAudioChannels(1);
+            recorder.setAudioSamplingRate(44100);
+            recorder.setAudioEncodingBitRate(48000);
+            recorder.setMaxDuration(MAX_LAUGH_MS);
+            recorder.setOnInfoListener((mr, what, extra) -> {
+                if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) finishRecording(true);
+            });
+            recorder.setOutputFile(laughFile.getAbsolutePath());
+            recorder.prepare();
+            recorder.start();
+            recStart = System.currentTimeMillis();
+            recEvent("started", null);
+        } catch (Exception e) {
+            releaseRecorder();
+            recEvent("error", null);
+        }
+    }
+
+    private void finishRecording(boolean keep) {
+        if (recorder == null) return;
+        boolean ok = true;
+        try {
+            recorder.stop();
+        } catch (RuntimeException e) {
+            ok = false; // stopped right after starting: nothing recorded
+        }
+        releaseRecorder();
+        if (!keep) return;
+        if (!ok || System.currentTimeMillis() - recStart < 500) { recEvent("short", null); return; }
+        try (FileInputStream in = new FileInputStream(laughFile)) {
+            byte[] bytes = new byte[(int) laughFile.length()];
+            int off = 0, n;
+            while (off < bytes.length && (n = in.read(bytes, off, bytes.length - off)) > 0) off += n;
+            recEvent("done", Base64.encodeToString(bytes, 0, off, Base64.NO_WRAP));
+        } catch (IOException e) {
+            recEvent("error", null);
+        }
+    }
+
+    private void releaseRecorder() {
+        if (recorder != null) {
+            try { recorder.release(); } catch (Exception ignored) { }
+            recorder = null;
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // don't keep the microphone open in the background
+        if (recorder != null) { finishRecording(false); recEvent("error", null); }
     }
 
     @Override

@@ -74,7 +74,7 @@ details input { width: 18px; height: 18px; vertical-align: middle; }
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 /* ---------- player pickers ---------- */
-.pick { display: flex; gap: 6px; overflow-x: auto; flex: 1; padding: 2px 0; scrollbar-width: none; }
+.pick { display: flex; gap: 10px; overflow-x: auto; flex: 1; padding: 9px 8px 3px; scrollbar-width: none; }
 .pick::-webkit-scrollbar { display: none; }
 .chip {
   position: relative; flex: none; display: flex; align-items: center; gap: 6px;
@@ -143,3 +143,16 @@ details input { width: 18px; height: 18px; vertical-align: middle; }
 @keyframes shake {
   0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); }
 }
+
+/* ---------- laugh recording ---------- */
+.chip .mic {
+  position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; line-height: 20px;
+  border-radius: 50%; background: #3b2a1e; font-size: 13px; text-align: center;
+  border: 2px solid #1b1410;
+}
+.chip .mic.has { background: #c9822b; }
+.laugh-card { padding: 12px 22px; max-height: 100%; overflow-y: auto; }
+.laugh-card img { width: 76px; height: 76px; border-color: #c9822b; }
+.laugh-card h2 { font-size: 21px; margin: 6px 0; }
+#laughStatus { font-size: 15px; min-height: 22px; margin-bottom: 10px; color: #f0c27a; }
+.laugh-done { margin-top: 10px; }

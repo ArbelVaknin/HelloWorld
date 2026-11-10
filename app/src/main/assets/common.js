@@ -26,6 +26,13 @@ function saveCustomPlayers() {
 const allPlayers = () => BUILTIN_PLAYERS.concat(CUSTOM_PLAYERS);
 const playerById = id => allPlayers().find(p => p.id === id);
 
+// Recorded laughs: player id -> audio data: URL (recorded on the phone).
+const LAUGHS_KEY = 'emmagames.laughs';
+const LAUGHS = (() => { try { return JSON.parse(localStorage.getItem(LAUGHS_KEY)) || {}; } catch (e) { return {}; } })();
+function saveLaughs() {
+  try { localStorage.setItem(LAUGHS_KEY, JSON.stringify(LAUGHS)); return true; } catch (e) { return false; }
+}
+
 // Current names / genders / face images for each color.
 const NAMES = {}, GENDER = {}, IMG = {};
 function applyPlayers(cb) {

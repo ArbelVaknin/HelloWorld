@@ -95,10 +95,23 @@ const Laugh = (() => {
     }
   }
 
-  function play(seconds = 5.5) {
+  let rec = null;
+
+  // Play the winner's recorded laugh if there is one, otherwise the synthesized laugh.
+  function play(playerId) {
+    stop();
+    const data = playerId && typeof LAUGHS !== 'undefined' ? LAUGHS[playerId] : null;
+    if (data) {
+      rec = new Audio(data);
+      rec.play().catch(() => { rec = null; synth(); });
+      return;
+    }
+    synth();
+  }
+
+  function synth(seconds = 5.5) {
     const a = getCtx();
     if (!a) return;
-    stop();
     master = a.createGain();
     master.gain.value = 0.9;
     const comp = a.createDynamicsCompressor();
@@ -113,6 +126,7 @@ const Laugh = (() => {
   }
 
   function stop() {
+    if (rec) { rec.pause(); rec = null; }
     if (!master) return;
     const m = master;
     master = null;
