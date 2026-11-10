@@ -97,16 +97,59 @@ const Laugh = (() => {
 
   let rec = null;
 
-  // Play the winner's recorded laugh if there is one, otherwise the synthesized laugh.
-  function play(playerId) {
+  let recSrc = null;
+
+  function dataUrlToBytes(url) {
+    const b64 = url.slice(url.indexOf(',') + 1);
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
+
+  // Play a recorded laugh (data: URL). Tries Web Audio first (works without a fresh
+  // touch once audio was unlocked), then an <audio> element. onFail runs if both fail.
+  function playData(data, onFail) {
     stop();
-    const data = playerId && typeof LAUGHS !== 'undefined' ? LAUGHS[playerId] : null;
-    if (data) {
+    const fallback = () => {
       rec = new Audio(data);
-      rec.play().catch(() => { rec = null; synth(); });
-      return;
-    }
-    synth();
+      rec.volume = 1;
+      rec.play().catch(() => { rec = null; if (onFail) onFail(); });
+    };
+    const a = getCtx();
+    if (!a || !a.decodeAudioData) { fallback(); return; }
+    let buf;
+    try { buf = dataUrlToBytes(data); } catch (e) { fallback(); return; }
+    const token = {};
+    recSrc = token;
+    const done = decoded => {
+      if (recSrc !== token) return; // stopped meanwhile
+      const src = a.createBufferSource();
+      src.buffer = decoded;
+      const g = a.createGain(); g.gain.value = 1.4;
+      src.connect(g); g.connect(a.destination);
+      src.start();
+      recSrc = src;
+    };
+    try {
+      const p = a.decodeAudioData(buf, done, () => { if (recSrc === token) { recSrc = null; fallback(); } });
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) { recSrc = null; fallback(); }
+  }
+
+  // Winner's recorded laugh if there is one, otherwise the synthesized laugh.
+  function play(playerId) {
+    const data = playerId && typeof LAUGHS !== 'undefined' ? LAUGHS[playerId] : null;
+    if (data) playData(data, () => synth());
+    else { stop(); synth(); }
+  }
+
+  // Only the recorded laugh (used for regular wins); returns false if there is none.
+  function playRecorded(playerId) {
+    const data = playerId && typeof LAUGHS !== 'undefined' ? LAUGHS[playerId] : null;
+    if (!data) return false;
+    playData(data);
+    return true;
   }
 
   function synth(seconds = 5.5) {
@@ -127,6 +170,7 @@ const Laugh = (() => {
 
   function stop() {
     if (rec) { rec.pause(); rec = null; }
+    if (recSrc) { try { if (recSrc.stop) recSrc.stop(); } catch (e) {} recSrc = null; }
     if (!master) return;
     const m = master;
     master = null;
@@ -137,5 +181,5 @@ const Laugh = (() => {
   // Browsers only allow sound after a touch; call this from any tap.
   function unlock() { getCtx(); }
 
-  return { play, stop, unlock };
+  return { play, playRecorded, playData, stop, unlock };
 })();

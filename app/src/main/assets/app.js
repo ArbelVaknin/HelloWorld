@@ -178,6 +178,8 @@ const App = (() => {
       ]);
       startLaugh(L, color);
     } else if (!kind) t += ' 🎉';
+    // a regular win: the winner's recorded laugh (if they recorded one)
+    if (kind !== 'turkish') Laugh.playRecorded(color === 'b' ? S.pb : S.pw);
     $('winText').textContent = t;
     $('winText').style.whiteSpace = 'pre-line';
     $('winTaunt').textContent = taunt;
@@ -501,10 +503,9 @@ const LaughRecorder = (() => {
   function play() {
     stopPlay();
     if (!LAUGHS[pid]) return;
-    audio = new Audio(LAUGHS[pid]);
-    audio.play().catch(() => {});
+    Laugh.playData(LAUGHS[pid], () => status('לא הצלחתי להשמיע את ההקלטה 😕'));
   }
-  function stopPlay() { if (audio) { audio.pause(); audio = null; } }
+  function stopPlay() { Laugh.stop(); }
 
   $('recBtn').onclick = () => (state === 'rec' ? stop() : start());
   $('playBtn').onclick = play;
