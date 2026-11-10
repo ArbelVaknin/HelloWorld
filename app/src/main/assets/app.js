@@ -145,8 +145,17 @@ const App = (() => {
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
   function showWin(color, kind) {
-    const L = opp(color);
     const face = $('winFace');
+    if (!color) { // draw (tic-tac-toe)
+      face.style.display = 'none';
+      $('winText').textContent = 'תיקו! 🤝';
+      $('winTaunt').textContent = '';
+      $('winTaunt').classList.add('hidden');
+      $('overlay').classList.remove('hidden');
+      return;
+    }
+    face.style.display = '';
+    const L = opp(color);
     face.src = IMG[color].src; face.className = color;
     let t = NAMES[color] + ' ' + gx(color, 'ניצח', 'ניצחה') + '!';
     if (isCpu(color)) t = NAMES[color] + ' (המחשב) ' + gx(color, 'ניצח', 'ניצחה') + ' 🤖';
@@ -223,6 +232,7 @@ const App = (() => {
   });
   $('btnCheckers').onclick = () => start(Checkers);
   $('btnBackgammon').onclick = () => start(Backgammon);
+  $('btnTicTacToe').onclick = () => start(TicTacToe);
   $('btnRoll').onclick = () => { if (game) { game.roll(); update(); } };
   $('btnUndo').onclick = () => { if (game) { game.undo(); update(); } };
   $('btnNew').onclick = () => { if (game) start(game); };
